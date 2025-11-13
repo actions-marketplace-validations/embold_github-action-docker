@@ -1,60 +1,165 @@
-<img src="./images/embold-logo.png">
+# Embold Scan Action
 
-# EMBOLD Github Actions
-[Embold](https://embold.io) Github Actions uncovers potential bugs, vulnerabilities and hard-to-detect anti-patterns that make your code difficult to maintain and can lead to error-prone solutions.
- 
-Embold is an AI-based software analytics platform that helps teams analyse and improve software quality. It analyses source code across 4 dimensions: code issues, design issues, metrics and duplication, and surfaces issues which impact stability, robustness, security, and maintainability. The Embold Score helps teams understand risk areas and prioritise the most important fixes.
- 
-## PRE-REQUISITES
-1. You have Embold Enterprise License with version 1.9.2.0 and above.
-2. You have an Embold Access Token corresponding to your account
-3. The repository to be analysed is linked to Embold
-4. Languages supported: Java, C/C++, Objective C, SQL, HTML, Apex.
+This action downloads the BrowserStack CQ Scanner (Embold scanner CLI) and runs static code analysis on your repository locally.
 
+## License
 
+Sources and documentation in this repository are released under the AGPL v3.
+See [LICENSE](./LICENSE).
 
-## USAGE
+## Inputs
 
-1.	Create remote repository on Embold UI and download its repository-configuration.json. 
-2.	Copy the downloaded repository-configuration.json to your base folder and replace the below values:
-   - "dataDir": "./EMBOLD_DATA",
-   - "baseDir": "$GITHUB_WORKSPACE",
-Commit the json file to your repository at the top level.
-3.	Secrets: Secrets can be created at 2 levels
- - Repository level secret 
-   EMBOLD_TOKEN: This is required to authenticate access to Embold. 
-   You can set the EMBOLD_TOKEN environment variable in the "Secrets" settings page of your repository. For more details, refer [EAT documentation here](https://docs.embold.io/embold-access-token-eat/#embold-access-token-eat)
- 
-  - Organization level secret
-   EMBOLD_TOKEN: This is required to authenticate access to Embold. 
-   You can set the EMBOLD_TOKEN environment variable in the "Secrets" settings page of your organization. For more details, refer [EAT documentation here](https://docs.embold.io/embold-access-token-eat/#embold-access-token-eat)
- 
-4.	The workflow is usually declared in .github/workflows/main.yaml, and looks like this:
+#### `emboldUrl`
+
+**Required** URL of your Embold instance. Default: `https://packages.embold.io/`
+
+#### `emboldToken`
+
+**Required** Your Embold access token (recommended: Use a [secret](https://docs.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets))
+
+#### `emboldRepoUid`
+
+**Required** Repository UID of the Embold repository where the results will be published. [How to get your repository UID?](https://docs.embold.io/projects-repositories/#get-repository-uid)
+
+#### `scannerDownloadUrl`
+
+**Optional** URL to download the BrowserStack CQ Scanner. Default: `https://v1.embold.io/nfs/CLI/browserstack-codequality-scanner.tar.gz`
+
+#### `repositoryConfigPath`
+
+**Optional** Path to the repository configuration JSON file. Default: `repository-configuration.json`
+
+#### `downloadConfig`
+
+**Optional** Download repository configuration from Embold server. Default: `false`
+
+#### `configDownloadPath`
+
+**Optional** Path where downloaded config will be saved. Default: `repository-configuration.json`
+
+#### `tempDirectory`
+
+**Optional** Temporary directory for scanner artifacts. Default: `./temp`
+
+#### `baseDirectory`
+
+**Optional** Base directory of the source code to scan. Default: `.`
+
+#### `verbose`
+
+**Optional** Enable verbose logging. Default: `true`
+
+#### `qualityGate`
+
+**Optional** Enable quality gate checking. Default: `false`
+
+#### `continueOnError`
+
+**Optional** Continue workflow execution even if scan fails. Default: `true`
+
+## Outputs
+
+#### `status`
+
+Status of the scan
+
+#### `qualityGateStatus`
+
+Quality gate status (PASSED/FAILED)
+
+#### `qualityGateData`
+
+Quality gate detailed data
+
+## Example Usage
+
+### Basic Usage
 
 ```yaml
-on: [push]
-jobs:
-  embold_scan_job:
-    runs-on: ubuntu-latest
-    name: Embold scan
-    steps:
-      - uses: actions/checkout@v2
-      - name: Embold scan step
-        id: embold
-        uses: embold/github-action-docker@v0.2
-        with:
-          embold-url: <Your Embold Server URL>
-          embold-token: ${{ secrets.EMBOLD_TOKEN }}
-          repo-config: '/github/workspace/repository-configuration.json'
-          repo-uid: <The Embold Repository UID>
-          # Uncomment the below line for verbose logging
-          # verbose: true
+- name: Run Embold Scan
+  uses: embold/github-action-docker@v1.0
+  with:
+    emboldUrl: https://packages.embold.io/
+    emboldToken: ${{ secrets.EMBOLD_TOKEN }}
+    emboldRepoUid: ${{ secrets.EMBOLD_REPO_UID }}
 ```
 
-5.	Embold Github action will then scan your source code on push.
-6.	Once the job is complete, scan results are available on the Embold server
+### Download Repository Config Automatically
 
-## FEEDBACK
-Feel free to use [Embold Community](https://community.embold.io) to give feedback, feature requests or reporting a bug. 
-## LICENSE
-Sources and documentation in this repository are released under the AGPL v3
+```yaml
+- name: Run Embold Scan
+  uses: embold/github-action-docker@v1.0
+  with:
+    emboldUrl: https://demo.embold.io/
+    emboldToken: ${{ secrets.EMBOLD_TOKEN }}
+    emboldRepoUid: 81aba9b3940bbf35aac36dd3e4a45562
+    downloadConfig: 'true'
+```
+
+### Enable Quality Gate
+
+```yaml
+- name: Run Embold Scan with Quality Gate
+  id: embold-scan
+  uses: embold/github-action-docker@v1.0
+  with:
+    emboldUrl: https://demo.embold.io/
+    emboldToken: ${{ secrets.EMBOLD_TOKEN }}
+    emboldRepoUid: 81aba9b3940bbf35aac36dd3e4a45562
+    qualityGate: 'true'
+
+- name: Check Quality Gate Result
+  if: steps.embold-scan.outputs.qualityGateStatus == 'FAILED'
+  run: |
+    echo "Quality gate failed!"
+    exit 1
+```
+
+### Complete Workflow Example
+
+```yaml
+name: Embold Code Quality Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  embold-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Run Embold Scan
+        uses: embold/github-action-docker@v1.0
+        with:
+          emboldUrl: https://packages.embold.io/
+          emboldToken: ${{ secrets.EMBOLD_TOKEN }}
+          emboldRepoUid: ${{ secrets.EMBOLD_REPO_UID }}
+          repositoryConfigPath: repository-configuration.json
+          verbose: true
+          qualityGate: 'true'
+```
+
+## Prerequisites
+
+- A repository configuration JSON file (default: `repository-configuration.json` in the root directory) or enable `downloadConfig`
+- Embold access token stored as a GitHub secret
+- Embold repository UID
+
+## How It Works
+
+1. Optionally downloads the repository configuration from Embold server
+2. Downloads the BrowserStack CQ Scanner from the specified URL
+3. Extracts the scanner archive
+4. Runs the Embold scanner with the provided configuration
+5. Publishes results to the specified Embold repository
+6. Optionally checks and outputs the quality gate status
+
+## Support
+
+For issues and questions, please visit the [Embold documentation](https://docs.embold.io/) or contact Embold support.
