@@ -11,7 +11,7 @@ See [LICENSE](./LICENSE).
 
 #### `emboldUrl`
 
-**Required** URL of your Embold instance. Default: `https://packages.embold.io/`
+**Required** URL of your Embold instance. e.g. : `https://demo.embold.io/`
 
 #### `emboldToken`
 
@@ -79,7 +79,7 @@ Quality gate detailed data
 - name: Run Embold Scan
   uses: embold/github-action-docker@v1.0
   with:
-    emboldUrl: https://packages.embold.io/
+    emboldUrl: https://demo.embold.io/
     emboldToken: ${{ secrets.EMBOLD_TOKEN }}
     emboldRepoUid: ${{ secrets.EMBOLD_REPO_UID }}
 ```
@@ -137,7 +137,7 @@ jobs:
       - name: Run Embold Scan
         uses: embold/github-action-docker@v1.0
         with:
-          emboldUrl: https://packages.embold.io/
+          emboldUrl: https://demo.embold.io/
           emboldToken: ${{ secrets.EMBOLD_TOKEN }}
           emboldRepoUid: ${{ secrets.EMBOLD_REPO_UID }}
           repositoryConfigPath: repository-configuration.json
